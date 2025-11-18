@@ -1,4 +1,4 @@
-name: Convert MKV to MP4 Hardsub
+name: Convert MKV to MP4 Hardsub Bro
 
 on:
   workflow_dispatch:
