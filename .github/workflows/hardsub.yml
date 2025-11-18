@@ -1,4 +1,4 @@
-name: Convert MKV to MP4 Hardsub Bro
+name: Convert MKV to MP4 Hardsub
 
 on:
   workflow_dispatch:
@@ -8,47 +8,47 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
+      - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Restore rclone config
+      - name: Setup rclone
         run: |
-          echo "$RCLONE_CONF_BASE64" | base64 -d > ~/.config/rclone/rclone.conf
+          echo "$RCLONE_CONF_BASE64" | base64 -d > rclone.conf
         env:
           RCLONE_CONF_BASE64: ${{ secrets.RCLONE_CONF_BASE64 }}
 
       - name: Install rclone
         run: |
           curl https://rclone.org/install.sh | sudo bash
+          mkdir -p ~/.config/rclone
+          mv rclone.conf ~/.config/rclone/rclone.conf
 
       - name: Install FFmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Debug Google Drive (cek dulu)
-        run: rclone lsd gdrive:
-
-      - name: Download MKV + SRT
+      - name: Download MKV & SRT from Google Drive
         run: |
           mkdir input
-          rclone copy "gdrive:${{ secrets.GDRIVE_FOLDER_ID }}" input \
+          rclone copy gdrive:${{ secrets.GDRIVE_FOLDER_ID }} input \
             --include "*.mkv" --include "*.srt" --fast-list
 
-      - name: Convert MKV + SRT to MP4 hardsub
+      - name: Convert all MKV + SRT to MP4 (hardsub)
         run: |
           mkdir output
           for mkv in input/*.mkv; do
             base=$(basename "$mkv" .mkv)
-            srt="input/${base}.srt"
+            srt="input/$base.srt"
             out="output/${base}.mp4"
 
             if [[ -f "$srt" ]]; then
-              echo "Converting $base..."
-              ffmpeg -i "$mkv" -vf "subtitles='${srt}'" -c:v libx264 -crf 18 -preset medium -c:a copy "$out"
+              echo "Converting $base ..."
+              ffmpeg -i "$mkv" -vf "subtitles='$srt'" -c:v libx264 -crf 18 -preset medium -c:a copy "$out"
             else
-              echo "Tidak ada SRT untuk $base → SKIP"
+              echo "Subtitle untuk $base tidak ditemukan, SKIP."
             fi
           done
 
-      - name: Upload Result
+      - name: Upload result to Google Drive
         run: |
-          rclone copy output "gdrive:${{ secrets.GDRIVE_FOLDER_ID }}/hardsub" --progress
+          rclone copy output gdrive:${{ secrets.GDRIVE_FOLDER_ID }}/hardsub \
+            --progress
