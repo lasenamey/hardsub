@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       srt_url:
-        description: "Direct URL subtitle (.srt)"
+        description: "Direct URL subtitle (.srt atau .vtt)"
         required: true
         type: string
       output_name:
@@ -33,20 +33,22 @@ jobs:
           curl -L "${{ inputs.video_url }}" -o input_video
           
           echo "Download subtitle..."
-          curl -L "${{ inputs.srt_url }}" -o subtitle.srt
+          # Download ke file sementara (raw_sub) lalu convert ke SRT standar
+          # Ini otomatis menangani VTT maupun SRT agar kompatibel dengan filter hardsub
+          curl -L "${{ inputs.srt_url }}" -o raw_sub
+          ffmpeg -i raw_sub subtitle.srt
 
       - name: Encode Video (H264 + AAC + 1080p + Hardsub)
         run: |
           ffmpeg -y \
             -i input_video \
-            -vf "subtitles=subtitle.srt:force_style='FontName=Segoe UI,FontSize=18,PrimaryColour=&H00FFFF&,Outline=1,Shadow=0'" \
+            -vf "subtitles=subtitle.srt:force_style='FontName=Segoe UI,FontSize=18,PrimaryColour=&H00FFFF&,Outline=1,Shadow=0',scale=1920:1080" \
             -c:v libx264 \
             -profile:v high \
             -level 4.2 \
             -pix_fmt yuv420p \
             -preset slow \
             -crf 18 \
-            -vf scale=1920:1080 \
             -c:a aac \
             -b:a 192k \
             "${{ inputs.output_name }}.mp4"
