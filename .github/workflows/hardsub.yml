@@ -33,26 +33,28 @@ jobs:
           curl -L "${{ inputs.video_url }}" -o input_video
           
           echo "Download subtitle..."
-          # Konversi otomatis VTT/SRT ke SRT standar
+          # Konversi otomatis VTT/SRT ke SRT standar untuk kompatibilitas filter
           curl -L "${{ inputs.srt_url }}" -o raw_sub
           ffmpeg -i raw_sub subtitle.srt
 
-      - name: Encode Video (H264 + AAC + 1080p + Hardsub)
+      - name: Encode Video (Super Fast + 1080p + Hardsub)
         run: |
-          # Spesifikasi Target:
-          # - Resolution: 1920x1080
-          # - Video Codec: H264 @ 2314 Kbps
-          # - Audio Codec: AAC @ 189 Kbps
+          # Optimasi Kecepatan Maksimal:
+          # - preset superfast: Fokus pada kecepatan encoding tertinggi.
+          # - threads 0: Menggunakan semua core CPU yang tersedia.
+          # - tune zerolatency: Mengurangi buffering internal untuk kecepatan.
           
           ffmpeg -y -hide_banner -nostats \
+            -threads 0 \
             -i input_video \
             -vf "subtitles=subtitle.srt:force_style='FontName=Segoe UI,FontSize=18,PrimaryColour=&H00FFFF&,Outline=1,Shadow=0',scale=1920:1080" \
             -c:v libx264 \
             -b:v 2314k \
-            -maxrate 2314k \
-            -bufsize 4628k \
+            -maxrate 3000k \
+            -bufsize 6000k \
             -pix_fmt yuv420p \
-            -preset slow \
+            -preset superfast \
+            -tune zerolatency \
             -c:a aac \
             -b:a 189k \
             -ar 48000 \
